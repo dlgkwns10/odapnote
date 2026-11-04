@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>오답노트</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f4f6fa;--card:#fff;--tx:#1d2a44;--mu:#6a7488;--bd:#dde2ec;--red:#d93a3a;--hl:#ffe45c;--ok:#1f8a4c;--ac:#2f54c9}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10131b;--card:#181c27;--tx:#e6e9f2;--mu:#98a1b5;--bd:#2a3042;--red:#ff6b6b;--hl:#8a7a12;--ok:#4cd387;--ac:#8fa8ff}}
+:root[data-theme="dark"]{--bg:#10131b;--card:#181c27;--tx:#e6e9f2;--mu:#98a1b5;--bd:#2a3042;--red:#ff6b6b;--hl:#8a7a12;--ok:#4cd387;--ac:#8fa8ff}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:400 15px/1.6 "IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+main{max-width:640px;margin:0 auto;padding:16px 16px 90px}
+h1{font-size:22px;margin:4px 0 2px}
+h1 mark{background:var(--hl);color:inherit;padding:0 4px}
+.sub{color:var(--mu);font-size:13px;margin:0 0 14px}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px);z-index:5}
+nav button{flex:1;border:0;background:none;color:var(--mu);padding:12px 0;font:inherit;font-size:13px;cursor:pointer}
+nav button.on{color:var(--red);font-weight:700;box-shadow:inset 0 3px 0 var(--red)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tag{font-size:12px;padding:1px 8px;border-radius:99px;border:1px solid var(--bd);color:var(--mu)}
+.tag.red{border-color:var(--red);color:var(--red)}
+.q{white-space:pre-wrap;margin:8px 0}
+.ans{border-left:3px solid var(--red);padding:2px 0 2px 10px;margin:8px 0;white-space:pre-wrap}
+.ans b{background:linear-gradient(transparent 55%,var(--hl) 55%)}
+label{display:block;font-size:13px;color:var(--mu);margin:10px 0 4px}
+input,select,textarea{width:100%;font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:9px 10px}
+textarea{min-height:76px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+.btn{font:inherit;border:1px solid var(--tx);background:var(--tx);color:var(--bg);border-radius:8px;padding:9px 14px;cursor:pointer}
+.btn.line{background:none;color:var(--tx);border-color:var(--bd)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.no{background:var(--red);border-color:var(--red);color:#fff}
+.bar{height:10px;background:var(--bd);border-radius:5px;overflow:hidden;flex:1}
+.bar i{display:block;height:100%;background:var(--red)}
+.bl{display:flex;gap:8px;align-items:center;margin:6px 0;font-size:13px}
+.bl span:first-child{width:84px;flex:none}
+.bl span:last-child{width:36px;text-align:right;color:var(--mu)}
+.big{font-size:30px;font-weight:700;line-height:1.1}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rep{white-space:pre-wrap;background:var(--bg);border:1px dashed var(--bd);border-radius:8px;padding:10px;font-size:14px}
+.empty{text-align:center;color:var(--mu);padding:28px 8px}
+h2{font-size:16px;margin:18px 0 8px}
+@media print{nav,.noprint{display:none!important}body{background:#fff;color:#000}.card{break-inside:avoid}}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<nav>
+<button data-v="today">오늘 복습</button>
+<button data-v="add">오답 추가</button>
+<button data-v="list">전체</button>
+<button data-v="stats">분석</button>
+<button data-v="data">백업</button>
+</nav>
+<script>
+var KEY="odapnote-v1",GAP=[1,3,7,14,30],CAUSES=["개념 부족","계산 실수","문제 잘못 읽음","시간 부족","찍음","응용 못 함"];
+var S={items:[],view:"today",shown:{},fs:"",fc:""};
+try{var raw=localStorage.getItem(KEY);if(raw)S.items=JSON.parse(raw)||[]}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S.items))}catch(e){}}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function ymd(d){var m=d.getMonth()+1,x=d.getDate();return d.getFullYear()+"-"+(m<10?"0":"")+m+"-"+(x<10?"0":"")+x}
+function today(){return ymd(new Date())}
+function plus(n){var d=new Date();d.setDate(d.getDate()+n);return ymd(d)}
+function due(){var t=today();return S.items.filter(function(i){return i.stage<5&&i.next<=t})}
+function $(id){return document.getElementById(id)}
+
+function add(){
+  var q=$("q").value.trim();if(!q){alert("문제 내용을 적어 주세요.");return}
+  S.items.unshift({id:Date.now(),subject:$("s").value.trim()||"기타",unit:$("u").value.trim()||"미분류",q:q,mine:$("m").value.trim(),right:$("r").value.trim(),cause:$("c").value,note:$("n").value.trim(),created:today(),stage:0,next:plus(1),hist:[]});
+  save();S.view="today";render();
+}
+function review(id,ok){
+  var it=S.items.filter(function(i){return i.id===id})[0];if(!it)return;
+  it.hist.push({d:today(),ok:ok});
+  if(ok){it.ease=Math.min(3,(it.ease||2.5)+0.1);it.stage++;var g=it.stage===1?3:Math.round((it.last||3)*it.ease);it.last=g;it.next=plus(g)}else{it.ease=Math.max(1.3,(it.ease||2.5)-0.3);it.lapses=(it.lapses||0)+1;it.stage=0;it.last=1;it.next=plus(1)}
+  save();render();
+}
+function del(id){if(confirm("이 오답을 삭제할까요?")){S.items=S.items.filter(function(i){return i.id!==id});save();render()}}
+function show(id){S.shown[id]=1;render()}
+
+function card(i,mode){
+  var h='<div class="card"><div class="row"><span class="tag">'+esc(i.subject)+'</span><span class="tag">'+esc(i.unit)+'</span><span class="tag red">'+esc(i.cause)+'</span>';
+  h+=i.stage>=5?'<span class="tag">완전 정복</span>':'<span class="tag">복습 '+i.stage+'/5 · 다음 '+i.next.slice(5)+'</span>';
+  h+='</div><div class="q">'+esc(i.q)+'</div>';
+  var open=mode!=="review"||S.shown[i.id];
+  if(open){
+    if(i.mine)h+='<div class="ans" style="border-color:var(--bd)">내 풀이: '+esc(i.mine)+'</div>';
+    if(i.right)h+='<div class="ans"><b>정답/풀이</b> '+esc(i.right)+'</div>';
+    if(i.note)h+='<div class="ans" style="border-color:var(--ac)">다음엔: '+esc(i.note)+'</div>';
+  }
+  if(mode==="review"){
+    h+=open?'<div class="row"><button class="btn ok" onclick="review('+i.id+',true)">맞혔다</button><button class="btn no" onclick="review('+i.id+',false)">또 틀렸다</button></div>':'<button class="btn" onclick="show('+i.id+')">정답 확인</button>';
+  }else h+='<div class="row noprint"><button class="btn line" onclick="del('+i.id+')">삭제</button></div>';
+  return h+'</div>';
+}
+function bars(map,total){
+  var k=Object.keys(map).sort(function(a,b){return map[b]-map[a]});
+  if(!k.length)return'<div class="sub">아직 데이터가 없어요.</div>';
+  return k.slice(0,6).map(function(x){return'<div class="bl"><span>'+esc(x)+'</span><div class="bar"><i style="width:'+Math.round(map[x]/total*100)+'%"></i></div><span>'+map[x]+'</span></div>'}).join("");
+}
+function grams(t){var s=t.replace(/\s+/g,""),o={};for(var i=0;i<s.length-1;i++)o[s.substr(i,2)]=1;return o}
+function sim(a,b){var A=Object.keys(a),n=0;A.forEach(function(k){if(b[k])n++});var d=A.length+Object.keys(b).length-n;return d?n/d:0}
+function groups(){
+  var it=S.items,g=it.map(function(i){return grams(i.q)}),seen={},out=[];
+  for(var i=0;i<it.length;i++){if(seen[i])continue;var m=[i];for(var j=i+1;j<it.length;j++){if(!seen[j]&&sim(g[i],g[j])>=0.3){m.push(j);seen[j]=1}}if(m.length>1){seen[i]=1;out.push(m.map(function(k){return it[k]}))}}
+  return out;
+}
+function weak(){
+  var w={};S.items.forEach(function(i){var k=i.subject+" "+i.unit,sc=i.stage>=5?0.2:1+1.5*(i.lapses||0)+(5-i.stage)*0.2;w[k]=(w[k]||0)+sc});
+  return w;
+}
+function stats(){
+  var n=S.items.length,cs={},sb={},un={},m=0,rv=0,ok=0;
+  S.items.forEach(function(i){cs[i.cause]=(cs[i.cause]||0)+1;sb[i.subject]=(sb[i.subject]||0)+1;var u=i.subject+" "+i.unit;un[u]=(un[u]||0)+1;if(i.stage>=5)m++;i.hist.forEach(function(h){rv++;if(h.ok)ok++})});
+  var days="";for(var d=13;d>=0;d--){var key=plus(-d),c=0;S.items.forEach(function(i){i.hist.forEach(function(h){if(h.d===key)c++})});days+='<div title="'+key+': '+c+'회" style="flex:1;height:'+(6+Math.min(c,10)*5)+'px;background:'+(c?"var(--red)":"var(--bd)")+';border-radius:3px"></div>'}
+  var topC=Object.keys(cs).sort(function(a,b){return cs[b]-cs[a]})[0],wk=weak(),topU=Object.keys(wk).sort(function(a,b){return wk[b]-wk[a]})[0];var wm={},mx=0;Object.keys(wk).forEach(function(k){wm[k]=Math.round(wk[k]*10)/10;if(wm[k]>mx)mx=wm[k]});var gp=groups(),gh=gp.length?gp.map(function(m){return'<div style="margin:6px 0;font-size:13px">• '+m.map(function(i){return esc(i.q.slice(0,18))}).join(' / ')+'</div>'}).join(""):'<div class="sub">비슷한 오답이 아직 없어요.</div>';
+  var rep=n?"지금까지 오답 "+n+"개를 기록했고, 그중 "+m+"개를 반복 복습으로 정복했다. 복습 "+rv+"회 가운데 "+ok+"회를 맞혔다(정답률 "+(rv?Math.round(ok/rv*100):0)+"%). 오답 원인은 ‘"+topC+"’이(가) "+cs[topC]+"개로 가장 많았고, 약점 점수가 가장 높은 단원은 ‘"+topU+"’("+un[topU]+"개)이다. 이 결과를 바탕으로 다음 공부에서는 해당 원인과 단원을 먼저 점검한다.":"";
+  return'<h1>학습 <mark>분석</mark></h1><p class="sub">기록이 쌓일수록 내 약점이 보여요.</p>'+
+  '<div class="grid"><div class="card"><div class="big">'+n+'</div>기록한 오답</div><div class="card"><div class="big">'+(n?Math.round(m/n*100):0)+'%</div>정복률</div></div>'+
+  '<div class="card"><b>오답 원인</b>'+bars(cs,n)+'</div><div class="card"><b>과목별</b>'+bars(sb,n)+'</div><div class="card"><b>먼저 공부할 단원</b>'+bars(wm,mx||1)+'<div class="sub">약점 점수 = 틀린 횟수와 복습 단계를 합산한 값</div></div><div class="card"><b>비슷한 오답 묶음</b><div class="sub">문제를 두 글자 조각으로 나눠 겹치는 정도로 묶어요.</div>'+gh+'</div>'+
+  '<div class="card"><b>최근 14일 복습 횟수</b><div style="display:flex;gap:4px;align-items:flex-end;height:60px;margin-top:10px">'+days+'</div></div>'+
+  (rep?'<h2>자동 학습 리포트</h2><div class="rep" id="rep">'+esc(rep)+'</div><p class="sub">복사해서 활동 기록에 참고하되, 실제로 한 활동에 맞게 직접 고쳐 쓰세요.</p><button class="btn line noprint" onclick="window.print()">인쇄 / PDF 저장</button>':'');
+}
+function render(){
+  var v=S.view,h="";
+  [].forEach.call(document.querySelectorAll("nav button"),function(b){b.className=b.getAttribute("data-v")===v?"on":""});
+  if(v==="today"){
+    var d=due();
+    h='<h1>오늘 <mark>복습</mark></h1><p class="sub">틀린 문제를 내 정답 기록에 따라 복습 간격이 달라져요.</p>';
+    h+=d.length?'<p class="sub">오늘 복습할 문제 '+d.length+'개</p>'+d.map(function(i){return card(i,"review")}).join(""):'<div class="empty">'+(S.items.length?"오늘 복습은 모두 끝났어요.":"아직 오답이 없어요. ‘오답 추가’에서 첫 문제를 기록해 보세요.")+'</div>';
+  }else if(v==="add"){
+    var subs=Array.from(new Set(S.items.map(function(i){return i.subject})));
+    h='<h1>오답 <mark>추가</mark></h1><p class="sub">원인까지 적어야 같은 실수를 줄일 수 있어요.</p><div class="card">'+
+    '<label>과목</label><input id="s" list="sl" placeholder="예: 수학"><datalist id="sl">'+subs.map(function(x){return'<option value="'+esc(x)+'">'}).join("")+'</datalist>'+
+    '<label>단원</label><input id="u" placeholder="예: 지수함수">'+
+    '<label>문제</label><textarea id="q"></textarea><label>내가 쓴 답/풀이</label><textarea id="m"></textarea><label>정답과 풀이</label><textarea id="r"></textarea>'+
+    '<label>틀린 원인</label><select id="c">'+CAUSES.map(function(x){return"<option>"+x+"</option>"}).join("")+'</select>'+
+    '<label>다음에는 이렇게 (선택)</label><input id="n"><p></p><button class="btn" onclick="add()">저장하고 내일 복습 등록</button></div>';
+  }else if(v==="list"){
+    var subs2=Array.from(new Set(S.items.map(function(i){return i.subject})));
+    var list=S.items.filter(function(i){return(!S.fs||i.subject===S.fs)&&(!S.fc||i.cause===S.fc)});
+    h='<h1>전체 <mark>오답</mark></h1><div class="row noprint" style="margin-bottom:12px"><select id="fs" style="flex:1" onchange="S.fs=this.value;render()"><option value="">모든 과목</option>'+subs2.map(function(x){return'<option'+(x===S.fs?" selected":"")+'>'+esc(x)+'</option>'}).join("")+'</select><select id="fc" style="flex:1" onchange="S.fc=this.value;render()"><option value="">모든 원인</option>'+CAUSES.map(function(x){return'<option'+(x===S.fc?" selected":"")+'>'+x+'</option>'}).join("")+'</select></div>';
+    h+=list.length?list.map(function(i){return card(i,"list")}).join("")+'<button class="btn line noprint" onclick="window.print()">인쇄 / PDF 저장</button>':'<div class="empty">조건에 맞는 오답이 없어요.</div>';
+  }else if(v==="stats"){h=stats()}
+  else{
+    h='<h1>데이터 <mark>백업</mark></h1><p class="sub">기록은 이 기기의 브라우저에만 저장돼요. 아래 텍스트를 복사해 두면 다른 기기로 옮길 수 있어요.</p><div class="card"><textarea id="bk" style="min-height:160px" placeholder="여기에 백업 텍스트를 붙여넣고 ‘불러오기’"></textarea><p class="row"><button class="btn" onclick="$(\'bk\').value=JSON.stringify(S.items)">내보내기</button><button class="btn line" onclick="imp()">불러오기</button></p></div>';
+  }
+  $("app").innerHTML=h;
+}
+function imp(){
+  try{var a=JSON.parse($("bk").value);if(!Array.isArray(a))throw 0;if(!confirm("현재 기록을 불러온 데이터로 바꿀까요?"))return;S.items=a;save();S.view="today";render()}catch(e){alert("백업 텍스트 형식이 올바르지 않아요.")}
+}
+document.querySelector("nav").addEventListener("click",function(e){var v=e.target.getAttribute("data-v");if(v){S.view=v;render()}});
+render();
+</script>
+</body>
+</html>
